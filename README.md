@@ -1,48 +1,75 @@
-# Google Photos EXIF Metadata Fixer (PowerShell)
+# Photo Metadata Fixer (Google Photos & iCloud)
 
-This PowerShell script restores **EXIF metadata** (date taken and GPS location) to photos and videos exported from **Google Photos**.
+This repository contains **PowerShell scripts to restore EXIF metadata** (such as date taken and GPS location) to photos and videos exported from **Google Photos** or **iCloud Photos**.
 
-When you export your data from Google Photos (via Google Takeout), metadata is often stored in separate `.json` sidecar files instead of being embedded directly in the media files. This script automatically matches media files with their corresponding JSON metadata and uses **ExifTool** to write the correct EXIF information back into the files.
+Both services often export media files **without embedded metadata**, storing important information in **sidecar files** instead:
+
+* **Google Photos:** `.json` metadata files
+* **iCloud Photos:** `.csv` metadata files
+
+These scripts automatically read those metadata files and use **ExifTool** to write the correct EXIF information back into the media files.
 
 ---
 
 ## ✨ Features
 
-- 📂 Recursively scans a Google Photos export folder
-- 🔎 Automatically matches media files to their JSON metadata (even with renamed files or `(1)`, `(2)` duplicates)
-- 🕒 Restores:
-  - `DateTimeOriginal`
-  - `CreateDate`
-- 🌍 Restores GPS data:
-  - Latitude / Longitude
-  - Altitude
-- 🧾 Generates a reusable `fix_exif_metadata.json`
-- 🔁 Can reuse an existing metadata file without rescanning
-- 🧹 Optional cleanup of Google Photos `.json` sidecar files
+### Google Photos Fixer
+
+* 📂 Recursively scans a Google Photos Takeout export
+* 🔎 Automatically matches media files with their `.json` metadata
+* 🕒 Restores metadata:
+
+  * `DateTimeOriginal`
+  * `CreateDate`
+  * `XMP:CreateDate`
+  * `FileModifyDate`
+* 🌍 Restores GPS data:
+
+  * Latitude / Longitude
+  * Altitude
+* 🔁 Handles duplicate filenames like `(1)`, `(2)`
+* 🧾 Generates reusable `fix_exif_metadata.json`
+* 🧹 Optional cleanup of `.json` sidecar files
+
+### iCloud Photos Fixer
+
+* 📂 Processes iCloud photo export folders
+* 📊 Reads metadata from Apple `.csv` export files
+* 🕒 Restores metadata:
+
+  * `DateTimeOriginal`
+  * `CreateDate`
+  * `XMP:CreateDate`
+  * `FileModifyDate`
+* 🧾 Generates reusable `fix_exif_metadata.json`
+* 🧹 Optional cleanup of `.csv` metadata files
 
 ---
 
 ## 📦 Requirements
 
-- **Windows**
-- **PowerShell 5.1+** or **PowerShell Core**
-- **ExifTool** installed and available in `PATH`
+* **Windows**
+* **PowerShell 5.1+** or **PowerShell Core**
+* **ExifTool** installed and available in `PATH`
 
-Download ExifTool:  
-https://exiftool.org/
+Download ExifTool:
+[https://exiftool.org/](https://exiftool.org/)
 
 Verify installation:
+
 ```powershell
 exiftool -ver
-````
+```
 
 ---
 
-## 📁 Expected Folder Structure
+## 📁 Expected Folder Structures
 
-This script expects the standard Google Photos Takeout structure, where media files and their metadata JSON files are in the same folders:
+### Google Photos (Google Takeout)
 
-```text
+Media files and their `.json` metadata files are located in the same folders.
+
+```
 Google Photos/
 ├── 2019/
 │   ├── IMG_1234.jpg
@@ -55,58 +82,108 @@ Google Photos/
 
 ---
 
+### iCloud Photos Export
+
+Apple exports photos with metadata stored in `.csv` files.
+
+```
+iCloud Photos/
+├── Photos/
+│   ├── IMG_0001.JPG
+│   ├── IMG_0002.MOV
+│
+├── Photo Details.csv
+└── Photo Details 2.csv
+```
+
+The script reads the CSV metadata and applies it to the corresponding media files.
+
+---
+
 ## 🚀 Usage
 
-1. **Clone or download** this repository
-2. Open **PowerShell**
-3. Run the script:
+Clone or download the repository, then run the appropriate script.
+
+---
+
+### Fix Google Photos Metadata
 
 ```powershell
 .\fix-google-photos-exif.ps1
 ```
 
-4. Enter the path to your **unzipped Google Photos export folder**
-5. Follow the interactive prompts:
+Steps:
 
-   * Reuse an existing `fix_exif_metadata.json` (if present)
-   * Apply EXIF metadata to files
-   * Optionally delete `.json` sidecar files after processing
+1. Enter the path to your **unzipped Google Photos export**
+2. The script will:
+
+   * Scan media files
+   * Match `.json` metadata
+   * Generate `fix_exif_metadata.json`
+3. Confirm if you want to apply the metadata
+4. Optionally delete the `.json` sidecar files
+
+---
+
+### Fix iCloud Photos Metadata
+
+```powershell
+.\fix-icloud-photos-exif.ps1
+```
+
+Steps:
+
+1. Enter the path to your **unzipped iCloud export**
+2. The script will:
+
+   * Scan `.csv` metadata files
+   * Generate `fix_exif_metadata.json`
+3. Confirm if you want to apply the metadata
+4. Optionally delete the `.csv` metadata files
 
 ---
 
 ## 🧾 Output
 
-* A file named **`fix_exif_metadata.json`** is generated in the root export folder
-* This file contains all EXIF corrections and can be reused later with ExifTool:
+Both scripts generate a file named:
+
+```
+fix_exif_metadata.json
+```
+
+This file contains all metadata corrections and can be reused later with ExifTool:
 
 ```powershell
 exiftool -r -m -j=fix_exif_metadata.json -overwrite_original <photos_folder>
 ```
 
+This allows you to **reapply metadata without rescanning files**.
+
 ---
 
 ## ⚠️ Notes & Limitations
 
-* Files without matching JSON metadata will be reported
-* If multiple JSON files match a single media file, the script will warn and skip it
-* EXIF GPS data is written in standard EXIF format (N/S/E/W handling included)
-* Original files are modified **in place** (no backup copies are created)
+* Files without matching metadata will be reported
+* If multiple metadata files match a single media file, the Google Photos script will warn and skip it
+* GPS data restoration is only available for **Google Photos exports** (iCloud CSV files do not include GPS)
+* Original files are modified **in place** (no backups are created)
 
 ---
 
 ## 🛡️ Safety Tips
 
-* **Make a backup** of your Google Photos export before running the script
-* Test on a small folder first
+* **Make a backup** of your photo export before running the scripts
+* Test on a **small folder first**
 * Review `fix_exif_metadata.json` if you want full control before applying changes
 
 ---
 
 ## 🙌 Credits
 
-* Google Photos Takeout format
 * Phil Harvey’s **ExifTool**
+
+[https://exiftool.org/](https://exiftool.org/)
 
 ---
 
-If this script helped you fix your photo library, a ⭐ on GitHub is always appreciated!
+⭐ If this project helped you recover your photo metadata, consider starring the repository!
